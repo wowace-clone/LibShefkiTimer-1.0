@@ -151,13 +151,18 @@ end
 -- timers are canceled here. 
 local function OnFinished(self)
 	local timer = self.timer
-	local callback = timer.callback
-	if type(callback) == "string" then
-		safecall(timer.object[callback], timer.object, timer.arg)
-	elseif callback then
-		safecall(callback, timer.arg)
-	end	
-	if not timer.repeating then
+	local repeating = timer.repeating
+	-- thorttle if the elapsed time is more than 20% longer than the timer duration
+	-- but only if it's a repeating timer.
+	if not repeating or self:GetElapsed() < timer.duration * 1.2 then
+		local callback = timer.callback
+		if type(callback) == "string" then
+			safecall(timer.object[callback], timer.object, timer.arg)
+		elseif callback then
+			safecall(callback, timer.arg)
+		end	
+	end
+	if not repeating then
 		ShefkiTimer.CancelTimer(timer.object, tostring(timer), true)
 	end
 end
