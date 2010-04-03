@@ -47,6 +47,8 @@ local tconcat = table.concat
 -- List them here for Mikk's FindGlobals script
 -- GLOBALS geterrorhandler
 
+local OnFinished
+
 -- Full timer recycling unlike AceTimer.  We recycle everything because we don't
 -- want to making any more AnimationGroup and Animation objects than necessary.
 local timerCache = {}
@@ -55,17 +57,16 @@ local function new()
 	if timer then
 		timerCache[timer] = nil
 	else
-		timer = {}
+		local ag = ShefkiTimer.frame:CreateAnimationGroup()
+		timer = ag:CreateAnimation("Animation")
+		timer:SetScript("OnFinished",OnFinished)
 	end
 	return timer
 end
 
 local function del(timer)
 	if not timer then return end
-	local ag = timer.ag
-	if ag then
-		ag:Stop()
-	end
+	timer:Stop()
 	timerCache[timer] = true
 	return nil
 end
@@ -149,21 +150,20 @@ end
 --
 -- called when the timer has expired and it should be fired.  Non repeating
 -- timers are canceled here. 
-local function OnFinished(self)
-	local timer = self.timer
-	local repeating = timer.repeating
+function OnFinished(self)
+	local repeating = self.repeating
 	-- thorttle if the elapsed time is more than 20% longer than the timer duration
 	-- but only if it's a repeating timer.
-	if not repeating or self:GetElapsed() < timer.duration * 1.2 then
-		local callback = timer.callback
+	if not repeating or self:GetElapsed() < repeating then
+		local callback = self.callback
 		if type(callback) == "string" then
-			safecall(timer.object[callback], timer.object, timer.arg)
+			safecall(self.object[callback], self.object, self.arg)
 		elseif callback then
-			safecall(callback, timer.arg)
+			safecall(callback, self.arg)
 		end	
 	end
 	if not repeating then
-		ShefkiTimer.CancelTimer(timer.object, tostring(timer), true)
+		ShefkiTimer.CancelTimer(self.object, tostring(self), true)
 	end
 end
 
@@ -194,30 +194,18 @@ local function Reg( self, callback, delay, arg, repeating )
 
 	local timer = new()
 
+	timer.repeating = repeating and delay * 1.2
 	timer.object = self
 	timer.callback = callback
-	timer.duration = delay
-	timer.repeating = repeating
 	timer.arg = arg
 
-	local ag = timer.ag
-	if not ag then
-		ag = ShefkiTimer.frame:CreateAnimationGroup()
-		timer.ag = ag
-	end
-	local anim = timer.anim
-	if not anim then
-		anim = ag:CreateAnimation("Animation")
-		anim:SetScript("OnFinished",OnFinished)
-		timer.anim = anim
-	end
+	local ag = timer:GetParent()
 	if repeating then
 		ag:SetLooping("REPEAT")
 	else
 		ag:SetLooping("NONE")
 	end
-	anim.timer = timer
-	anim:SetDuration(delay)
+	timer:SetDuration(delay)
 
 	local handle = tostring(timer)
 	local selftimers = ShefkiTimer.selfs[self]
@@ -227,7 +215,7 @@ local function Reg( self, callback, delay, arg, repeating )
 	end
 	selftimers[handle] = timer
 
-	anim:Play()
+	timer:Play()
 
 	return handle	
 end
@@ -308,7 +296,7 @@ function ShefkiTimer:TimeLeft(handle)
 		geterrorhandler()(MAJOR..": TimeLeft(handle): '"..tostring(handle).."' - no such timer registered")
 		return false
 	end
-	return timer.delay - timer.anim:GetElapsed()
+	return timer:GetDuration() - timer:GetElapsed()
 end
 
 ShefkiTimer.embeds = ShefkiTimer.embeds or {}
