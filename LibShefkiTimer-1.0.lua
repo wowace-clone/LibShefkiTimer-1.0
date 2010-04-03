@@ -41,6 +41,7 @@ ShefkiTimer.frame = ShefkiTimer.frame or CreateFrame("Frame","ShefkiTimer10Frame
 local assert, error, loadstring = assert, error, loadstring
 local setmetatable, rawset, rawget = setmetatable, rawset, rawget
 local select, pairs, type, next, tostring = select, pairs, type, next, tostring
+local tconcat = table.concat
 
 -- Global vars/functions that we don't upvalue since they might get hooked, or upgraded
 -- List them here for Mikk's FindGlobals script
