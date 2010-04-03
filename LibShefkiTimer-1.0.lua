@@ -303,7 +303,7 @@ function ShefkiTimer:TimeLeft(handle)
 		error(MAJOR..": TimeLeft(handle): 'handle' - expected a string", 2)
 	end
 	local selftimers = ShefkiTimer.selfs[self]
-	local timer = selftimers and selftiemrs[handle]
+	local timer = selftimers and selftimers[handle]
 	if not timer then
 		geterrorhandler()(MAJOR..": TimeLeft(handle): '"..tostring(handle).."' - no such timer registered")
 		return false
