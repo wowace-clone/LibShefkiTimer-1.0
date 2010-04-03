@@ -1,0 +1,10 @@
+## Interface: 30300
+## Title: Lib: ShefkiTimer-1.0 
+## Notes: Experimental timer library that uses the Animation system as a scheduler.
+## Author: Shefki
+## DefaultState: enabled
+## Version: @project-version@
+## X-Category: Library
+
+LibStub\LibStub.lua
+LibShefkiTimer-1.0.xml
