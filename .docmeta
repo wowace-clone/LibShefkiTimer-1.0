@@ -1,0 +1,5 @@
+-
+  type: luadoc
+  input-files: 
+    - "LibShefkiTimer-1.0.lua"
+  output-directory: API
