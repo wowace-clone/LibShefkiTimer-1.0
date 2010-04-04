@@ -77,44 +77,44 @@ end
 local xpcall = xpcall
 
 local function errorhandler(err)
-  return geterrorhandler()(err)
+	return geterrorhandler()(err)
 end
 
 local function CreateDispatcher(argCount)
-  local code = [[
-    local xpcall, eh = ...  -- our arguments are received as unnamed values in "..." since we don't have a proper function declaration
-    local method, ARGS
-    local function call() return method(ARGS) end
-  
-    local function dispatch(func, ...)
-       method = func
-       if not method then return end
-       ARGS = ...
-       return xpcall(call, eh)
-    end
-  
-    return dispatch
-  ]]
+	local code = [[
+	local xpcall, eh = ...  -- our arguments are received as unnamed values in "..." since we don't have a proper function declaration
+	local method, ARGS
+	local function call() return method(ARGS) end
 
-  local ARGS = {}
-  for i = 1, argCount do ARGS[i] = "arg"..i end
-  code = code:gsub("ARGS", tconcat(ARGS, ", "))
-  return assert(loadstring(code, "safecall Dispatcher["..argCount.."]"))(xpcall, errorhandler)
+	local function dispatch(func, ...)
+		method = func
+		if not method then return end
+		ARGS = ...
+		return xpcall(call, eh)
+	end
+
+	return dispatch
+	]]
+
+	local ARGS = {}
+	for i = 1, argCount do ARGS[i] = "arg"..i end
+	code = code:gsub("ARGS", tconcat(ARGS, ", "))
+	return assert(loadstring(code, "safecall Dispatcher["..argCount.."]"))(xpcall, errorhandler)
 end
 
 local Dispatchers = setmetatable({}, {
-  __index=function(self, argCount)
-    local dispatcher = CreateDispatcher(argCount)
-    rawset(self, argCount, dispatcher)
-    return dispatcher
-  end
+	__index=function(self, argCount)
+		local dispatcher = CreateDispatcher(argCount)
+		rawset(self, argCount, dispatcher)
+		return dispatcher
+	end
 })
 Dispatchers[0] = function(func)
-  return xpcall(func, errorhandler)
+	return xpcall(func, errorhandler)
 end
 
 local function safecall(func, ...)
-  return Dispatchers[select('#', ...)](func, ...)
+	return Dispatchers[select('#', ...)](func, ...)
 end
 
 --- Cancels a timer with the given handle, registered by same addon object as used for
@@ -160,7 +160,7 @@ function OnFinished(self)
 			safecall(self.object[callback], self.object, self.arg)
 		elseif callback then
 			safecall(callback, self.arg)
-		end	
+		end
 	end
 	if not repeating then
 		ShefkiTimer.CancelTimer(self.object, tostring(self), true)
@@ -177,20 +177,20 @@ end
 --
 -- returns the handle of the timer for later processing (canceling etc)
 local function Reg( self, callback, delay, arg, repeating )
-  if type(callback) ~= "string" and type(callback) ~= "function" then
-    local error_origin = repeating and "ScheduleRepeatingTimer" or "ScheduleTimer"
-    error(MAJOR..": " .. error_origin .. "(callback, delay, arg): 'callback' - function or method name expected.", 3)
-  end
-  if type(callback) == "string" then
-    if type(self)~="table" then
-      local error_origin = repeating and "ScheduleRepeatingTimer" or "ScheduleTimer"
-      error(MAJOR..": " .. error_origin .. "(\"methodName\", delay, arg): 'self' - must be a table.", 3)
-    end
-    if type(self[callback]) ~= "function" then
-      local error_origin = repeating and "ScheduleRepeatingTimer" or "ScheduleTimer"
-      error(MAJOR..": " .. error_origin .. "(\"methodName\", delay, arg): 'methodName' - method not found on target object.", 3)
-    end
-  end
+	if type(callback) ~= "string" and type(callback) ~= "function" then
+		local error_origin = repeating and "ScheduleRepeatingTimer" or "ScheduleTimer"
+		error(MAJOR..": " .. error_origin .. "(callback, delay, arg): 'callback' - function or method name expected.", 3)
+	end
+	if type(callback) == "string" then
+		if type(self)~="table" then
+			local error_origin = repeating and "ScheduleRepeatingTimer" or "ScheduleTimer"
+			error(MAJOR..": " .. error_origin .. "(\"methodName\", delay, arg): 'self' - must be a table.", 3)
+		end
+		if type(self[callback]) ~= "function" then
+			local error_origin = repeating and "ScheduleRepeatingTimer" or "ScheduleTimer"
+			error(MAJOR..": " .. error_origin .. "(\"methodName\", delay, arg): 'methodName' - method not found on target object.", 3)
+		end
+	end
 
 	local timer = new()
 
@@ -217,7 +217,7 @@ local function Reg( self, callback, delay, arg, repeating )
 
 	timer:Play()
 
-	return handle	
+	return handle
 end
 
 --- Schedule a new one-shot timer.
@@ -320,10 +320,10 @@ end
 --
 -- cancel all timers registered for the object
 function ShefkiTimer:OnEmbedDisable( target )
-  target:CancelAllTimers()
+	target:CancelAllTimers()
 end
 
 
 for addon in pairs(ShefkiTimer.embeds) do
-  ShefkiTimer:Embed(addon)
+	ShefkiTimer:Embed(addon)
 end
