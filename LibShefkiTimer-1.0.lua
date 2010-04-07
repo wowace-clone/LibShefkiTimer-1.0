@@ -47,8 +47,6 @@ local tconcat = table.concat
 -- List them here for Mikk's FindGlobals script
 -- GLOBALS geterrorhandler
 
-local OnFinished
-
 -- Full timer recycling unlike AceTimer.  We recycle everything because we don't
 -- want to making any more AnimationGroup and Animation objects than necessary.
 local timerCache = {}
@@ -59,7 +57,6 @@ local function new()
 	else
 		local ag = ShefkiTimer.frame:CreateAnimationGroup()
 		timer = ag:CreateAnimation("Animation")
-		timer:SetScript("OnFinished",OnFinished)
 	end
 	return timer
 end
@@ -150,11 +147,16 @@ end
 --
 -- called when the timer has expired and it should be fired.  Non repeating
 -- timers are canceled here. 
-function OnFinished(self)
+function OnFinished(self, elapsed)
 	local repeating = self.repeating
+	if not elapsed then
+		-- OnFinished doesn't pass elapsed so we have to get it.
+		-- OnUpdate does which is used for 0 length timers.
+		elapsed = self:GetElapsed()
+	end
 	-- thorttle if the elapsed time is more than 20% longer than the timer duration
 	-- but only if it's a repeating timer.
-	if not repeating or self:GetElapsed() < repeating then
+	if not repeating or elapsed < repeating then
 		local callback = self.callback
 		if type(callback) == "string" then
 			safecall(self.object[callback], self.object, self.arg)
@@ -194,7 +196,6 @@ local function Reg( self, callback, delay, arg, repeating )
 
 	local timer = new()
 
-	timer.repeating = repeating and delay * 1.2
 	timer.object = self
 	timer.callback = callback
 	timer.arg = arg
@@ -205,7 +206,21 @@ local function Reg( self, callback, delay, arg, repeating )
 	else
 		ag:SetLooping("NONE")
 	end
-	timer:SetDuration(delay)
+	if delay == 0 then
+		-- If the delay is 0 switch the OnFinished to be called on the next
+		-- OnUpdate.  0 length durations do nothing in the animation system
+		-- so if we want 0 lenth durations to work we have to handle them
+		-- ourselves.
+		timer:SetScript("OnFinished",nil)
+		timer:SetScript("OnUpdate",OnFinished)
+		timer:SetDuration(1) -- just set the delay to 1 second.
+		timer.repeating = repeating and 1.2 
+	else
+		timer:SetScript("OnFinished",OnFinished)
+		timer:SetScript("OnUpdate",nil)
+		timer:SetDuration(delay)
+		timer.repeating = repeating and delay * 1.2
+	end
 
 	local handle = tostring(timer)
 	local selftimers = ShefkiTimer.selfs[self]
