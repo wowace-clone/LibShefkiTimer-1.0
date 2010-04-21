@@ -29,7 +29,7 @@
 	* It should have better performance with large numbers of timers, how much better depends on the internals of the Animation system which we have no way to know except through experimentation, which this is intended to test.
 ]]
 
-local MAJOR, MINOR = "LibShefkiTimer-1.0", 1
+local MAJOR, MINOR = "LibShefkiTimer-1.0", 2
 
 local ShefkiTimer = LibStub:NewLibrary(MAJOR, MINOR)
 if not ShefkiTimer then return end
