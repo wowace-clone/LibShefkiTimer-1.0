@@ -63,7 +63,6 @@ end
 
 local function del(timer)
 	if not timer then return end
-	timer:Stop()
 	timerCache[timer] = true
 	return nil
 end
@@ -114,58 +113,81 @@ local function safecall(func, ...)
 	return Dispatchers[select('#', ...)](func, ...)
 end
 
---- Cancels a timer with the given handle, registered by same addon object as used for
--- `:ScheduleTimer`  Bot one-shot and repeating timers can be canceled wit this function,
--- as long as the `handle` is valid and the timer has not fired yet or was canceled before.
--- @param handle The handle of the timer, as returned by `:ScheduleTimer` or `:ScheduleRepeatingTimer`
--- @param silent If true, no error is raised if the tiemr handle is invalid (expired or already canceled)
--- @return True if the timer was successfully cancelled.
-function ShefkiTimer:CancelTimer(handle, silent)
-	if not handle then return end
-	if type(handle) ~= "string" then
-		error(MAJOR..": CancelTimer(handle): 'handle' - expected a string", 2)
-	end
-	local selftimers = ShefkiTimer.selfs[self]
-	local timer = selftimers and selftimers[handle]
-	if silent then
-		if timer then
-			selftimers[handle] = del(timer)
-		end
-		return not not timer
-	else
-		if not timer then
-			geterrorhandler()(MAJOR..": CancelTimer(handle[, silent]): '"..tostring(handle).."' - no such timer registered")
-			return false
-		end
-		selftimers[handle] = del(timer)
-		return true
-	end
-end
+local OnFinished
+do
+	-- state variables to prevent timers canceled during callbacks from being returned
+	-- from the pool until OnFinished finishes.
+	local in_OnFinished
+	local canceled_in_OnFinished
 
--- --------------------------------------------------------------------
--- OnFinished handler
---
--- called when the timer has expired and it should be fired.  Non repeating
--- timers are canceled here. 
-function OnFinished(self, elapsed)
-	local repeating = self.repeating
-	if not elapsed then
-		-- OnFinished doesn't pass elapsed so we have to get it.
-		-- OnUpdate does which is used for 0 length timers.
-		elapsed = self:GetElapsed()
-	end
-	-- thorttle if the elapsed time is more than 20% longer than the timer duration
-	-- but only if it's a repeating timer.
-	if not repeating or elapsed < repeating then
-		local callback = self.callback
-		if type(callback) == "string" then
-			safecall(self.object[callback], self.object, self.arg)
-		elseif callback then
-			safecall(callback, self.arg)
+	--- Cancels a timer with the given handle, registered by same addon object as used for
+	-- `:ScheduleTimer`  Bot one-shot and repeating timers can be canceled wit this function,
+	-- as long as the `handle` is valid and the timer has not fired yet or was canceled before.
+	-- @param handle The handle of the timer, as returned by `:ScheduleTimer` or `:ScheduleRepeatingTimer`
+	-- @param silent If true, no error is raised if the tiemr handle is invalid (expired or already canceled)
+	-- @return True if the timer was successfully cancelled.
+	function ShefkiTimer:CancelTimer(handle, silent)
+		if not handle then return end
+		if type(handle) ~= "string" then
+			error(MAJOR..": CancelTimer(handle): 'handle' - expected a string", 2)
+		end
+		local selftimers = ShefkiTimer.selfs[self]
+		local timer = selftimers and selftimers[handle]
+		if silent then
+			if timer then
+				timer:Stop()
+				if not in_OnFinished and in_OnFinished ~= timer then
+					selftimers[handle] = del(timer)
+				else
+					-- delay returning anim object to timerCache until the end of the OnFinished.
+					canceled_in_OnFinished = true
+				end
+			end
+			return not not timer
+		else
+			if not timer then
+				geterrorhandler()(MAJOR..": CancelTimer(handle[, silent]): '"..tostring(handle).."' - no such timer registered")
+				return false
+			end
+			timer:Stop()
+			if not in_OnFinished and in_OnFinished ~= timer then
+				selftimers[handle] = del(timer)
+			else
+				-- delay returning anim object to timerCache until the end of the OnFinished.
+				canceled_in_OnFinished = true
+			end
+			return true
 		end
 	end
-	if not repeating then
-		ShefkiTimer.CancelTimer(self.object, tostring(self), true)
+
+	-- --------------------------------------------------------------------
+	-- OnFinished handler
+	--
+	--called when the timer has expired and it should be fired.  Non repeating
+	-- timers are canceled here. 
+	function OnFinished(self, elapsed)
+		in_OnFinished = self 
+		local repeating = self.repeating
+		if not elapsed then
+			-- OnFinished doesn't pass elapsed so we have to get it.
+			-- OnUpdate does which is used for 0 length timers.
+			elapsed = self:GetElapsed()
+		end
+		-- thorttle if the elapsed time is more than 20% longer than the timer duration
+		-- but only if it's a repeating timer.
+		if not repeating or elapsed < repeating then
+			local callback = self.callback
+			if type(callback) == "string" then
+				safecall(self.object[callback], self.object, self.arg)
+			elseif callback then
+				safecall(callback, self.arg)
+			end
+		end
+		in_OnFinished = nil
+		if not repeating or canceled_in_OnFinished then
+			ShefkiTimer.CancelTimer(self.object, tostring(self), true)
+			canceled_in_OnFinished = nil
+		end
 	end
 end
 
