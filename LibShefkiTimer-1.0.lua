@@ -29,7 +29,7 @@
 	* It should have better performance with large numbers of timers, how much better depends on the internals of the Animation system which we have no way to know except through experimentation, which this is intended to test.
 ]]
 
-local MAJOR, MINOR = "LibShefkiTimer-1.0", 2
+local MAJOR, MINOR = "LibShefkiTimer-1.0", 3
 
 local ShefkiTimer = LibStub:NewLibrary(MAJOR, MINOR)
 if not ShefkiTimer then return end
@@ -135,7 +135,7 @@ do
 		local timer = selftimers and selftimers[handle]
 		if silent then
 			if timer then
-				timer:Stop()
+				timer:GetParent():Stop()
 				if not in_OnFinished and in_OnFinished ~= timer then
 					selftimers[handle] = del(timer)
 				else
@@ -149,7 +149,7 @@ do
 				geterrorhandler()(MAJOR..": CancelTimer(handle[, silent]): '"..tostring(handle).."' - no such timer registered")
 				return false
 			end
-			timer:Stop()
+			timer:GetParent():Stop()
 			if not in_OnFinished and in_OnFinished ~= timer then
 				selftimers[handle] = del(timer)
 			else
@@ -252,7 +252,7 @@ local function Reg( self, callback, delay, arg, repeating )
 	end
 	selftimers[handle] = timer
 
-	timer:Play()
+	ag:Play()
 
 	return handle
 end
