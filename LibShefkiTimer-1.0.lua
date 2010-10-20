@@ -173,6 +173,7 @@ do
 			-- OnUpdate does which is used for 0 length timers.
 			elapsed = self:GetElapsed()
 		end
+		if self.delay == 0 and elapsed == 0 then return end -- skip first call for 0 length
 		-- thorttle if the elapsed time is more than 20% longer than the timer duration
 		-- but only if it's a repeating timer.
 		if not repeating or elapsed < repeating then
@@ -221,13 +222,9 @@ local function Reg( self, callback, delay, arg, repeating )
 	timer.object = self
 	timer.callback = callback
 	timer.arg = arg
+	timer.delay = delay
 
 	local ag = timer:GetParent()
-	if repeating then
-		ag:SetLooping("REPEAT")
-	else
-		ag:SetLooping("NONE")
-	end
 	if delay == 0 then
 		-- If the delay is 0 switch the OnFinished to be called on the next
 		-- OnUpdate.  0 length durations do nothing in the animation system
@@ -236,12 +233,21 @@ local function Reg( self, callback, delay, arg, repeating )
 		timer:SetScript("OnFinished",nil)
 		timer:SetScript("OnUpdate",OnFinished)
 		timer:SetDuration(1) -- just set the delay to 1 second.
-		timer.repeating = repeating and 1.2 
+		-- Always setup 0 length durations as repeating timers.  OnUpdate gets
+		-- called as soon as you call Play().  Which is not our intent with 0
+		-- length timers.
+		ag:SetLooping("REPEAT")
+		timer.repeating = 1.2 
 	else
 		timer:SetScript("OnFinished",OnFinished)
 		timer:SetScript("OnUpdate",nil)
 		timer:SetDuration(delay)
 		timer.repeating = repeating and delay * 1.2
+		if repeating then
+			ag:SetLooping("REPEAT")
+		else
+			ag:SetLooping("NONE")
+		end
 	end
 
 	local handle = tostring(timer)
