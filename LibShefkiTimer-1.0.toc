@@ -1,4 +1,4 @@
-## Interface: 40000
+## Interface: 50001
 ## Title: Lib: ShefkiTimer-1.0 
 ## Notes: Experimental timer library that uses the Animation system as a scheduler.
 ## Author: Shefki
